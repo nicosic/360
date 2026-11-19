@@ -1,0 +1,20 @@
+---
+import Okvir from '../layouts/Okvir.astro';
+import { ADMINISTRATOR, ulogeRacuna } from '../lib/ovlasti';
+
+const sjednica = Astro.locals.sjednica!;
+const uloge = await ulogeRacuna(Astro.locals.okruzenje.db, sjednica.racunId, new Date());
+---
+
+<Okvir naslov="Početna">
+  <p>Prijavljeni ste kao <strong>{sjednica.eposta}</strong>.</p>
+  <p>Uloge: {uloge.length ? uloge.join(', ') : 'nema dodijeljenih uloga'}.</p>
+  {
+    uloge.includes(ADMINISTRATOR) && (
+      <p>
+        <a href="/revizija">Revizijski trag</a>
+      </p>
+    )
+  }
+  <p>Postupak ocjenjivanja još nije ugrađen; ovo je temelj platforme: prijava, uloge i revizijski trag.</p>
+</Okvir>

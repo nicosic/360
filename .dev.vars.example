@@ -1,0 +1,2 @@
+# Kopirati u .dev.vars. Ključ: 32 nasumična bajta u base64 (npr. `openssl rand -base64 32`).
+KLJUC_INSTANCE=

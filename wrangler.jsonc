@@ -1,0 +1,22 @@
+{
+  // Lokalni razvoj. Konfiguraciju za instancu kupca izrađuje scripts/otvori-instancu.mjs.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "p360-lokalno",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "p360-lokalno",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "DOKUMENTI", "bucket_name": "p360-lokalno" }],
+  "vars": {
+    "INSTANCA": "lokalno",
+    "VERZIJA": "0.1.0",
+    "EPOSTA_NACIN": "konzola"
+  }
+}

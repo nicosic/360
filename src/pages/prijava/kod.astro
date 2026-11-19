@@ -1,0 +1,31 @@
+---
+import Okvir from '../../layouts/Okvir.astro';
+import { postaviKolacic } from '../../lib/prijava/kolacic';
+import { potvrdiKod } from '../../lib/prijava/prijava';
+
+let eposta = Astro.url.searchParams.get('eposta') ?? '';
+let poruka = '';
+if (Astro.request.method === 'POST') {
+  const podaci = await Astro.request.formData();
+  eposta = String(podaci.get('eposta') ?? '');
+  const token = await potvrdiKod(Astro.locals.okruzenje, eposta, String(podaci.get('kod') ?? ''), new Date());
+  if (token) {
+    postaviKolacic(Astro.cookies, Astro.url, token);
+    return Astro.redirect('/prijava/drugi-faktor');
+  }
+  poruka = 'Kod nije ispravan ili je istekao. Zatražite novi kod.';
+}
+if (!eposta) return Astro.redirect('/prijava');
+---
+
+<Okvir naslov="Kod iz e-pošte">
+  {poruka && <p class="poruka" role="alert">{poruka}</p>}
+  <p>Ako za adresu <strong>{eposta}</strong> postoji račun, poslali smo kod od osam znamenki. Vrijedi 10 minuta.</p>
+  <form method="post">
+    <input type="hidden" name="eposta" value={eposta} />
+    <label for="kod">Kod</label>
+    <input id="kod" name="kod" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{8,10}" required autofocus />
+    <button type="submit">Potvrdi</button>
+  </form>
+  <p><a href="/prijava">Zatraži novi kod</a></p>
+</Okvir>

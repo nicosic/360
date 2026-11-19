@@ -1,0 +1,49 @@
+---
+import Okvir from '../../layouts/Okvir.astro';
+import { postaviKolacic } from '../../lib/prijava/kolacic';
+import { potvrdiDrugiFaktor, pripremiDrugiFaktor } from '../../lib/prijava/prijava';
+
+const { okruzenje } = Astro.locals;
+const sjednica = Astro.locals.sjednica!;
+if (sjednica.razina === 'potpuna') return Astro.redirect('/');
+
+let poruka = '';
+if (Astro.request.method === 'POST') {
+  const podaci = await Astro.request.formData();
+  const ishod = await potvrdiDrugiFaktor(okruzenje, sjednica, String(podaci.get('kod') ?? ''), new Date());
+  if (typeof ishod === 'object') {
+    postaviKolacic(Astro.cookies, Astro.url, ishod.token);
+    return Astro.redirect('/');
+  }
+  poruka =
+    ishod === 'ograniceno'
+      ? 'Previše pokušaja. Pokušajte ponovno za 15 minuta.'
+      : 'Kod nije ispravan. Provjerite sat na uređaju i pokušajte s novim kodom.';
+}
+const upis = await pripremiDrugiFaktor(okruzenje, sjednica.racunId);
+---
+
+<Okvir naslov="Drugi faktor">
+  {poruka && <p class="poruka" role="alert">{poruka}</p>}
+  {
+    upis && (
+      <section>
+        <p>
+          Prva prijava: dodajte ovaj račun u aplikaciju za jednokratne kodove na mobitelu. U aplikaciji odaberite ručni
+          unos i upišite ovaj ključ:
+        </p>
+        <p>
+          <code>{upis.tajna}</code>
+        </p>
+        <p>
+          Na mobitelu možete otvoriti i <a href={upis.adresa}>poveznicu za aplikaciju</a>.
+        </p>
+      </section>
+    )
+  }
+  <form method="post">
+    <label for="kod">Kod iz aplikacije (šest znamenki)</label>
+    <input id="kod" name="kod" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" required autofocus />
+    <button type="submit">Prijavi se</button>
+  </form>
+</Okvir>

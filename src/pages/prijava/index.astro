@@ -1,0 +1,30 @@
+---
+import Okvir from '../../layouts/Okvir.astro';
+import { zatraziKod } from '../../lib/prijava/prijava';
+
+let poruka = '';
+if (Astro.request.method === 'POST') {
+  const podaci = await Astro.request.formData();
+  const eposta = String(podaci.get('eposta') ?? '');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eposta.trim())) {
+    poruka = 'Upišite ispravnu adresu e-pošte.';
+  } else {
+    const ishod = await zatraziKod(Astro.locals.okruzenje, eposta, Astro.clientAddress, new Date());
+    if (ishod === 'ograniceno') {
+      poruka = 'Previše zahtjeva. Pokušajte ponovno za 15 minuta.';
+    } else {
+      return Astro.redirect(`/prijava/kod?eposta=${encodeURIComponent(eposta.trim())}`);
+    }
+  }
+}
+---
+
+<Okvir naslov="Prijava">
+  {poruka && <p class="poruka" role="alert">{poruka}</p>}
+  <form method="post">
+    <label for="eposta">Službena adresa e-pošte</label>
+    <input id="eposta" name="eposta" type="email" autocomplete="username" required autofocus />
+    <button type="submit">Pošalji kod</button>
+  </form>
+  <p>Na adresu ćemo poslati jednokratni kod. Lozinke nema.</p>
+</Okvir>

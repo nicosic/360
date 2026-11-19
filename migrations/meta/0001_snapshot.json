@@ -1,0 +1,827 @@
+{
+  "id": "75c4fdf7-8ad1-478a-afd2-cfd7e63cedb0",
+  "prevId": "44e947ef-4084-4a98-9c62-e8af6f277c4c",
+  "version": "6",
+  "dialect": "sqlite",
+  "tables": {
+    "jedinica": {
+      "name": "jedinica",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nadredena_id": {
+          "name": "nadredena_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vrijedi_od": {
+          "name": "vrijedi_od",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vrijedi_do": {
+          "name": "vrijedi_do",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "jedinica_nadredena": {
+          "name": "jedinica_nadredena",
+          "columns": [
+            "nadredena_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "jednokratni_kod": {
+      "name": "jednokratni_kod",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "racun_id": {
+          "name": "racun_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sazetak": {
+          "name": "sazetak",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "istice": {
+          "name": "istice",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "pokusaja": {
+          "name": "pokusaja",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "iskoristen_u": {
+          "name": "iskoristen_u",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stvoreno": {
+          "name": "stvoreno",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "jednokratni_kod_racun": {
+          "name": "jednokratni_kod_racun",
+          "columns": [
+            "racun_id",
+            "stvoreno"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "jednokratni_kod_racun_id_racun_id_fk": {
+          "name": "jednokratni_kod_racun_id_racun_id_fk",
+          "tableFrom": "jednokratni_kod",
+          "columnsFrom": [
+            "racun_id"
+          ],
+          "tableTo": "racun",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "odsutnost": {
+      "name": "odsutnost",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "osoba_id": {
+          "name": "osoba_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "osnova": {
+          "name": "osnova",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "od": {
+          "name": "od",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "do": {
+          "name": "do",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "odsutnost_osoba": {
+          "name": "odsutnost_osoba",
+          "columns": [
+            "osoba_id",
+            "od"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "odsutnost_osoba_id_osoba_id_fk": {
+          "name": "odsutnost_osoba_id_osoba_id_fk",
+          "tableFrom": "odsutnost",
+          "columnsFrom": [
+            "osoba_id"
+          ],
+          "tableTo": "osoba",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "osoba": {
+      "name": "osoba",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ime": {
+          "name": "ime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "prezime": {
+          "name": "prezime",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "identifikacijski_broj": {
+          "name": "identifikacijski_broj",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stvoreno": {
+          "name": "stvoreno",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "osoba_identifikacijski_broj": {
+          "name": "osoba_identifikacijski_broj",
+          "columns": [
+            "identifikacijski_broj"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "pokusaj_prijave": {
+      "name": "pokusaj_prijave",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kljuc": {
+          "name": "kljuc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vrijeme": {
+          "name": "vrijeme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "pokusaj_prijave_kljuc": {
+          "name": "pokusaj_prijave_kljuc",
+          "columns": [
+            "kljuc",
+            "vrijeme"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "racun": {
+      "name": "racun",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "osoba_id": {
+          "name": "osoba_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "eposta": {
+          "name": "eposta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stanje": {
+          "name": "stanje",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "totp_tajna_sifrirano": {
+          "name": "totp_tajna_sifrirano",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "totp_potvrden_u": {
+          "name": "totp_potvrden_u",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "totp_zadnji_korak": {
+          "name": "totp_zadnji_korak",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stvoreno": {
+          "name": "stvoreno",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "racun_eposta": {
+          "name": "racun_eposta",
+          "columns": [
+            "eposta"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "racun_osoba_id_osoba_id_fk": {
+          "name": "racun_osoba_id_osoba_id_fk",
+          "tableFrom": "racun",
+          "columnsFrom": [
+            "osoba_id"
+          ],
+          "tableTo": "osoba",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "raspored": {
+      "name": "raspored",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "osoba_id": {
+          "name": "osoba_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "jedinica_id": {
+          "name": "jedinica_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "radno_mjesto": {
+          "name": "radno_mjesto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "skupina_radnog_mjesta": {
+          "name": "skupina_radnog_mjesta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "nadredeni_osoba_id": {
+          "name": "nadredeni_osoba_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "radno_vrijeme_sati": {
+          "name": "radno_vrijeme_sati",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vrijedi_od": {
+          "name": "vrijedi_od",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vrijedi_do": {
+          "name": "vrijedi_do",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "raspored_osoba": {
+          "name": "raspored_osoba",
+          "columns": [
+            "osoba_id",
+            "vrijedi_od"
+          ],
+          "isUnique": false
+        },
+        "raspored_nadredeni": {
+          "name": "raspored_nadredeni",
+          "columns": [
+            "nadredeni_osoba_id",
+            "vrijedi_od"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "raspored_osoba_id_osoba_id_fk": {
+          "name": "raspored_osoba_id_osoba_id_fk",
+          "tableFrom": "raspored",
+          "columnsFrom": [
+            "osoba_id"
+          ],
+          "tableTo": "osoba",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "raspored_jedinica_id_jedinica_id_fk": {
+          "name": "raspored_jedinica_id_jedinica_id_fk",
+          "tableFrom": "raspored",
+          "columnsFrom": [
+            "jedinica_id"
+          ],
+          "tableTo": "jedinica",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        },
+        "raspored_nadredeni_osoba_id_osoba_id_fk": {
+          "name": "raspored_nadredeni_osoba_id_osoba_id_fk",
+          "tableFrom": "raspored",
+          "columnsFrom": [
+            "nadredeni_osoba_id"
+          ],
+          "tableTo": "osoba",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "revizija": {
+      "name": "revizija",
+      "columns": {
+        "rb": {
+          "name": "rb",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vrijeme": {
+          "name": "vrijeme",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "racun_id": {
+          "name": "racun_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "radnja": {
+          "name": "radnja",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "predmet_vrsta": {
+          "name": "predmet_vrsta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "predmet_id": {
+          "name": "predmet_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prije": {
+          "name": "prije",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "poslije": {
+          "name": "poslije",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "zbroj_prethodnog": {
+          "name": "zbroj_prethodnog",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "zbroj": {
+          "name": "zbroj",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "sjednica_prijave": {
+      "name": "sjednica_prijave",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "racun_id": {
+          "name": "racun_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "sazetak_tokena": {
+          "name": "sazetak_tokena",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "razina": {
+          "name": "razina",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stvoreno": {
+          "name": "stvoreno",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "zadnja_aktivnost": {
+          "name": "zadnja_aktivnost",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "istice": {
+          "name": "istice",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "opozvana_u": {
+          "name": "opozvana_u",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "sjednica_prijave_token": {
+          "name": "sjednica_prijave_token",
+          "columns": [
+            "sazetak_tokena"
+          ],
+          "isUnique": true
+        },
+        "sjednica_prijave_racun": {
+          "name": "sjednica_prijave_racun",
+          "columns": [
+            "racun_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "sjednica_prijave_racun_id_racun_id_fk": {
+          "name": "sjednica_prijave_racun_id_racun_id_fk",
+          "tableFrom": "sjednica_prijave",
+          "columnsFrom": [
+            "racun_id"
+          ],
+          "tableTo": "racun",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "uloga": {
+      "name": "uloga",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "racun_id": {
+          "name": "racun_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "uloga": {
+          "name": "uloga",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "opseg": {
+          "name": "opseg",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "vrijedi_od": {
+          "name": "vrijedi_od",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vrijedi_do": {
+          "name": "vrijedi_do",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "uloga_racun": {
+          "name": "uloga_racun",
+          "columns": [
+            "racun_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "uloga_racun_id_racun_id_fk": {
+          "name": "uloga_racun_id_racun_id_fk",
+          "tableFrom": "uloga",
+          "columnsFrom": [
+            "racun_id"
+          ],
+          "tableTo": "racun",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "ustanova": {
+      "name": "ustanova",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "naziv": {
+          "name": "naziv",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "vrsta": {
+          "name": "vrsta",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "nadlezno_tijelo": {
+          "name": "nadlezno_tijelo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stvoreno": {
+          "name": "stvoreno",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

@@ -1,0 +1,45 @@
+---
+import { desc } from 'drizzle-orm';
+import { revizija } from '../db/shema';
+import Okvir from '../layouts/Okvir.astro';
+import { ADMINISTRATOR, imaUlogu } from '../lib/ovlasti';
+import { provjeriLanac, zabiljezi } from '../lib/revizija';
+
+const { db } = Astro.locals.okruzenje;
+const sjednica = Astro.locals.sjednica!;
+const sada = new Date();
+if (!(await imaUlogu(db, sjednica.racunId, ADMINISTRATOR, sada))) {
+  await zabiljezi(db, { racunId: sjednica.racunId, radnja: 'pristup.odbijen', predmetVrsta: 'stranica', predmetId: '/revizija' }, sada);
+  return new Response('Nemate ovlast za ovu stranicu.', { status: 403 });
+}
+const lanac = await provjeriLanac(db);
+const zapisi = await db.select().from(revizija).orderBy(desc(revizija.rb)).limit(50);
+---
+
+<Okvir naslov="Revizijski trag">
+  <p class="poruka">
+    {
+      lanac.ispravno
+        ? `Lanac je ispravan (${lanac.zapisa} zapisa).`
+        : `UPOZORENJE: lanac je prekinut na zapisu ${lanac.prekidNa}.`
+    }
+  </p>
+  <table>
+    <thead>
+      <tr><th>Rb.</th><th>Vrijeme</th><th>Račun</th><th>Radnja</th><th>Predmet</th></tr>
+    </thead>
+    <tbody>
+      {
+        zapisi.map((z) => (
+          <tr>
+            <td>{z.rb}</td>
+            <td>{z.vrijeme}</td>
+            <td>{z.racunId ?? '–'}</td>
+            <td>{z.radnja}</td>
+            <td>{z.predmetVrsta ? `${z.predmetVrsta} ${z.predmetId ?? ''}` : '–'}</td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+</Okvir>
