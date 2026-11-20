@@ -10,17 +10,22 @@ export interface PosiljateljEposte {
   posalji(poruka: Poruka): Promise<void>;
 }
 
-/** Razvojna izvedba: poruku ispisuje u zapis rada. Dopuštena samo na lokalnoj instanci. */
+/** Razvojna izvedba: poruku ispisuje u zapis rada. Dopuštena samo lokalno i na ispitnoj instanci. */
 export class EpostaUKonzolu implements PosiljateljEposte {
   async posalji(poruka: Poruka): Promise<void> {
     console.log(`[e-pošta] prima: ${poruka.prima}\n  predmet: ${poruka.predmet}\n  ${poruka.tekst}`);
   }
 }
 
-export function odaberiPosiljatelja(nacin: string | undefined, instanca: string): PosiljateljEposte {
+export function odaberiPosiljatelja(
+  nacin: string | undefined,
+  instanca: string,
+  ispitna = false,
+): PosiljateljEposte {
   if (nacin === 'konzola') {
-    if (instanca !== 'lokalno') {
-      throw new Error('EPOSTA_NACIN=konzola dopušten je samo na lokalnoj instanci');
+    // Tko može čitati zapis rada, može se prijaviti kao bilo tko. Zato samo bez stvarnih podataka.
+    if (instanca !== 'lokalno' && !ispitna) {
+      throw new Error('EPOSTA_NACIN=konzola dopušten je samo lokalno i na ispitnoj instanci');
     }
     return new EpostaUKonzolu();
   }

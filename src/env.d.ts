@@ -13,5 +13,6 @@ declare namespace App {
     okruzenje: import('./lib/prijava/prijava').Okruzenje;
     sjednica: import('./lib/prijava/sjednica').AktivnaSjednica | null;
     verzija: string;
+    ispitna: boolean;
   }
 }

@@ -100,8 +100,10 @@ export function napisiKonfiguraciju(zapis, { verzija = zapis.verzija } = {}) {
     compatibility_date: '2026-11-01',
     compatibility_flags: ['nodejs_compat'],
     observability: { enabled: true },
-    routes: [{ pattern: zapis.adresa, custom_domain: true }],
-    workers_dev: false,
+    // Vlastita poddomena ako je zadana domena; inače adresa workers.dev (samo ispitne instance).
+    ...(zapis.vlastitaDomena
+      ? { routes: [{ pattern: zapis.adresa, custom_domain: true }], workers_dev: false }
+      : { workers_dev: true }),
     d1_databases: [
       {
         binding: 'DB',
@@ -111,7 +113,12 @@ export function napisiKonfiguraciju(zapis, { verzija = zapis.verzija } = {}) {
       },
     ],
     r2_buckets: [{ binding: 'DOKUMENTI', bucket_name: zapis.spremiste, jurisdiction: 'eu' }],
-    vars: { INSTANCA: zapis.oznaka, VERZIJA: verzija, EPOSTA_NACIN: zapis.epostaNacin },
+    vars: {
+      INSTANCA: zapis.oznaka,
+      VERZIJA: verzija,
+      EPOSTA_NACIN: zapis.epostaNacin,
+      ISPITNA: zapis.ispitna ? 'da' : 'ne',
+    },
   };
   writeFileSync(put, JSON.stringify(konfiguracija, null, 2) + '\n');
   return put;
@@ -129,6 +136,18 @@ export function noviId() {
   let sufiks = '';
   for (const b of crypto.getRandomValues(new Uint8Array(16))) sufiks += abeceda[b % 32];
   return prefiks + sufiks;
+}
+
+/** Naziv adrese workers.dev računa (npr. 'p360-hr'), preko Cloudflare API-ja. */
+export async function poddomenaWorkersDev() {
+  const racun = process.env.CLOUDFLARE_ACCOUNT_ID;
+  if (!racun) throw new Error('CLOUDFLARE_ACCOUNT_ID nije postavljen.');
+  const odgovor = await fetch(`https://api.cloudflare.com/client/v4/accounts/${racun}/workers/subdomain`, {
+    headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN ?? ''}` },
+  });
+  const naziv = (await odgovor.json())?.result?.subdomain;
+  if (!naziv) throw new Error('Račun nema adresu workers.dev.');
+  return naziv;
 }
 
 export function sqlTekst(vrijednost) {

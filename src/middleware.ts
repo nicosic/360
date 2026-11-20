@@ -1,7 +1,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { imeKolacica } from './lib/prijava/kolacic';
 import { ucitajSjednicu } from './lib/prijava/sjednica';
-import { stvoriOkruzenje, verzija } from './platforma/okolina';
+import { ispitna, stvoriOkruzenje, verzija } from './platforma/okolina';
 
 const JAVNE = new Set(['/prijava', '/prijava/kod']);
 const PRVI_FAKTOR = new Set(['/prijava/drugi-faktor', '/odjava']);
@@ -20,6 +20,7 @@ export const onRequest = defineMiddleware(async (kontekst, dalje) => {
   const okruzenje = stvoriOkruzenje();
   kontekst.locals.okruzenje = okruzenje;
   kontekst.locals.verzija = verzija();
+  kontekst.locals.ispitna = ispitna();
 
   const token = kontekst.cookies.get(imeKolacica(kontekst.url))?.value;
   const sjednica = await ucitajSjednicu(okruzenje.db, token, new Date());

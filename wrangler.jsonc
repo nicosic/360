@@ -17,6 +17,7 @@
   "vars": {
     "INSTANCA": "lokalno",
     "VERZIJA": "0.1.0",
-    "EPOSTA_NACIN": "konzola"
+    "EPOSTA_NACIN": "konzola",
+    "ISPITNA": "ne"
   }
 }

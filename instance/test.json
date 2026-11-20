@@ -1,0 +1,17 @@
+{
+  "oznaka": "test",
+  "naziv": "Ispitna instanca",
+  "adresa": "p360-test.p360-hr.workers.dev",
+  "vlastitaDomena": false,
+  "ispitna": true,
+  "aplikacija": "p360-test",
+  "baza": {
+    "ime": "p360-test",
+    "id": "cabd326d-3ac4-4a90-a49a-fe221589571a"
+  },
+  "spremiste": "p360-test",
+  "epostaNacin": "konzola",
+  "verzija": "0.1.0",
+  "otvoreno": "2026-11-20T14:10:46.717Z",
+  "stanje": "aktivna"
+}

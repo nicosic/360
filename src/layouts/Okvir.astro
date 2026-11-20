@@ -3,7 +3,7 @@ interface Props {
   naslov: string;
 }
 const { naslov } = Astro.props;
-const { sjednica, okruzenje, verzija } = Astro.locals;
+const { sjednica, okruzenje, verzija, ispitna } = Astro.locals;
 ---
 
 <!doctype html>
@@ -15,6 +15,13 @@ const { sjednica, okruzenje, verzija } = Astro.locals;
     <title>{naslov} · Ocjenjivanje</title>
   </head>
   <body>
+    {
+      ispitna && (
+        <p class="poruka" role="note">
+          Ispitna instanca. Ne unosite stvarne podatke: kod za prijavu se ne šalje e-poštom, nego se čita iz zapisa rada.
+        </p>
+      )
+    }
     <header>
       <strong>Ocjenjivanje učinkovitosti rada</strong>
       {

@@ -5,6 +5,9 @@
 //   node scripts/otvori-instancu.mjs --oznaka skola-primjer --naziv "OŠ Primjer" \
 //     --domena ocjenjivanje.example --administrator ravnatelj@skola.hr --eposta-nacin <način> [--proba]
 //
+// Ispitna instanca (bez stvarnih podataka): --ispitna, bez --domena; adresa je na workers.dev,
+// a kod za prijavu se čita iz zapisa rada (--eposta-nacin konzola).
+//
 // --proba ispisuje naredbe bez izvršavanja i ne mijenja ništa.
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -12,6 +15,7 @@ import {
   argumenti,
   napisiKonfiguraciju,
   obvezno,
+  poddomenaWorkersDev,
   pokreni,
   provjeriOznaku,
   putZapisa,
@@ -32,14 +36,18 @@ try {
   const proba = !!arg.proba;
   const oznaka = provjeriOznaku(obvezno(arg, 'oznaka'));
   const naziv = obvezno(arg, 'naziv');
-  const domena = obvezno(arg, 'domena');
+  const ispitna = !!arg.ispitna;
+  const domena = ispitna && !arg.domena ? null : obvezno(arg, 'domena');
   const administrator = obvezno(arg, 'administrator');
   const epostaNacin = obvezno(arg, 'eposta-nacin');
-  if (epostaNacin === 'konzola') throw new Error("Način 'konzola' dopušten je samo lokalno.");
+  if (epostaNacin === 'konzola' && !ispitna) {
+    throw new Error("Način 'konzola' dopušten je samo lokalno i na ispitnoj instanci (--ispitna).");
+  }
   if (existsSync(putZapisa(oznaka))) throw new Error(`Instanca '${oznaka}' već je u popisu.`);
 
   const ime = `p360-${oznaka}`;
-  console.log(`Otvaranje instance '${oznaka}' (${naziv})${proba ? ' — PROBA, ništa se ne mijenja' : ''}`);
+  const adresa = domena ? `${oznaka}.${domena}` : `${ime}.${proba ? '<workers-dev>' : await poddomenaWorkersDev()}.workers.dev`;
+  console.log(`Otvaranje ${ispitna ? 'ISPITNE ' : ''}instance '${oznaka}' (${naziv})${proba ? ' — PROBA, ništa se ne mijenja' : ''}`);
 
   korak(1, 'Baza D1 s jurisdikcijom „eu“');
   const izlazBaze = wrangler(['d1', 'create', ime, '--jurisdiction=eu'], { proba });
@@ -63,7 +71,9 @@ try {
   const zapis = {
     oznaka,
     naziv,
-    adresa: `${oznaka}.${domena}`,
+    adresa,
+    vlastitaDomena: !!domena,
+    ispitna,
     aplikacija: ime,
     baza: { ime, id: bazaId },
     spremiste: ime,
@@ -86,8 +96,8 @@ try {
     ulaz: randomBytes(32).toString('base64'),
   });
 
-  korak(5, `Poddomena ${zapis.adresa}`);
-  console.log('  Povezana pri postavljanju (routes.custom_domain u konfiguraciji instance).');
+  korak(5, `Adresa ${zapis.adresa}`);
+  console.log(`  Povezana pri postavljanju (${domena ? 'vlastita poddomena' : 'workers.dev'}).`);
 
   korak(6, 'Zapis u središnjem popisu (instance/)');
   if (!proba) spremiZapis({ ...zapis, stanje: 'aktivna' });

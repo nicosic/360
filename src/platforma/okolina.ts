@@ -10,9 +10,14 @@ export function stvoriOkruzenje(): Okruzenje {
   return {
     db: otvoriBazu(env.DB),
     kljuc: ucitajKljucInstance(env.KLJUC_INSTANCE),
-    eposta: odaberiPosiljatelja(env.EPOSTA_NACIN, env.INSTANCA),
+    eposta: odaberiPosiljatelja(env.EPOSTA_NACIN, env.INSTANCA, ispitna()),
     instanca: env.INSTANCA,
   };
+}
+
+/** Ispitna instanca: bez stvarnih podataka, uz razvojne iznimke. */
+export function ispitna(): boolean {
+  return (env.ISPITNA as string) === 'da';
 }
 
 export function verzija(): string {
