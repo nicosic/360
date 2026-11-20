@@ -12,6 +12,8 @@ export function stvoriOkruzenje(): Okruzenje {
     kljuc: ucitajKljucInstance(env.KLJUC_INSTANCE),
     eposta: odaberiPosiljatelja(env.EPOSTA_NACIN, env.INSTANCA, ispitna()),
     instanca: env.INSTANCA,
+    // Stalni kod vrijedi samo ako je instanca označena kao ispitna.
+    ispitniKod: (ispitna() && (env.ISPITNI_KOD as string)) || undefined,
   };
 }
 

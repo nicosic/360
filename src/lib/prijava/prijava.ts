@@ -24,6 +24,11 @@ export interface Okruzenje {
   eposta: PosiljateljEposte;
   /** Oznaka instance; prikazuje se u aplikaciji za kodove i u poruci. */
   instanca: string;
+  /**
+   * Stalni kod prvog faktora. Postavlja se samo na ispitnoj instanci (vidi src/platforma/okolina.ts);
+   * tko zna adresu e-pošte računa, s njim prolazi prvi faktor.
+   */
+  ispitniKod?: string;
 }
 
 export function urediEpostu(unos: string): string {
@@ -80,7 +85,17 @@ export async function potvrdiKod(o: Okruzenje, unosEposte: string, kod: string, 
   const eposta = urediEpostu(unosEposte);
   const cisto = kod.replace(/\s/g, '');
   const [r] = await o.db.select().from(racun).where(eq(racun.eposta, eposta)).limit(1);
-  if (!r || r.stanje === 'blokiran' || !/^\d{8}$/.test(cisto)) return null;
+  if (!r || r.stanje === 'blokiran') return null;
+
+  if (o.ispitniKod && jednako(cisto, o.ispitniKod)) {
+    await zabiljezi(
+      o.db,
+      { racunId: r.id, radnja: 'prijava.kod_potvrden', predmetVrsta: 'racun', predmetId: r.id, poslije: { ispitniKod: true } },
+      sada,
+    );
+    return stvoriSjednicu(o.db, r.id, 'kod', sada);
+  }
+  if (!/^\d{8}$/.test(cisto)) return null;
 
   const [zadnji] = await o.db
     .select()

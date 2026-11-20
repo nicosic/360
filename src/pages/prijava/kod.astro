@@ -21,10 +21,11 @@ if (!eposta) return Astro.redirect('/prijava');
 <Okvir naslov="Kod iz e-pošte">
   {poruka && <p class="poruka" role="alert">{poruka}</p>}
   <p>Ako za adresu <strong>{eposta}</strong> postoji račun, poslali smo kod od osam znamenki. Vrijedi 10 minuta.</p>
+  {Astro.locals.okruzenje.ispitniKod && <p class="poruka">Na ovoj ispitnoj instanci privremeno vrijedi i stalni kod.</p>}
   <form method="post">
     <input type="hidden" name="eposta" value={eposta} />
     <label for="kod">Kod</label>
-    <input id="kod" name="kod" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{8,10}" required autofocus />
+    <input id="kod" name="kod" inputmode="numeric" autocomplete="one-time-code" pattern={Astro.locals.ispitna ? undefined : '[0-9 ]{8,10}'} required autofocus />
     <button type="submit">Potvrdi</button>
   </form>
   <p><a href="/prijava">Zatraži novi kod</a></p>

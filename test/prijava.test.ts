@@ -147,3 +147,16 @@ describe('prijava', () => {
     expect((await provjeriLanac(t.db)).ispravno).toBe(true);
   });
 });
+
+describe('stalni kod ispitne instance', () => {
+  it('vrijedi samo kad je postavljen i ne zaobilazi drugi faktor', async () => {
+    const id = await noviRacun('goran@primjer.hr');
+    expect(await potvrdiKod(o, 'goran@primjer.hr', '007', sada)).toBeNull();
+
+    const ispitno = { ...o, ispitniKod: '007' };
+    expect(await potvrdiKod(ispitno, 'goran@primjer.hr', '008', sada)).toBeNull();
+    expect(await potvrdiKod(ispitno, 'nitko@primjer.hr', '007', sada)).toBeNull();
+    const token = await potvrdiKod(ispitno, 'goran@primjer.hr', '007', sada);
+    expect(await ucitajSjednicu(t.db, token!, sada)).toMatchObject({ racunId: id, razina: 'kod' });
+  });
+});

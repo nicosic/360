@@ -118,6 +118,8 @@ export function napisiKonfiguraciju(zapis, { verzija = zapis.verzija } = {}) {
       VERZIJA: verzija,
       EPOSTA_NACIN: zapis.epostaNacin,
       ISPITNA: zapis.ispitna ? 'da' : 'ne',
+      // Stalni kod prvog faktora; samo ispitne instance, privremeno.
+      ISPITNI_KOD: zapis.ispitna ? (zapis.ispitniKod ?? '') : '',
     },
   };
   writeFileSync(put, JSON.stringify(konfiguracija, null, 2) + '\n');
