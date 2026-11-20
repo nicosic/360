@@ -1,0 +1,134 @@
+---
+import Okvir from '../../../layouts/Okvir.astro';
+import { pokusaj } from '../../../lib/obrazac';
+import { brojZaposlenihNaDan, imenujTijelo, imeOsobe, izracunajKvote, postaviClana, provjeriSastav, ucitajCiklus, ukloniClana } from '../../../lib/postupak/ciklus';
+import { hrDatum } from '../../../lib/postupak/pristup';
+import { izracunajStanje, tekuciKorak } from '../../../lib/postupak/stroj';
+
+const korisnik = Astro.locals.korisnik!;
+const { db } = Astro.locals.okruzenje;
+if (!korisnik.uloge.some((u) => u === 'kadrovska' || u === 'odlucitelj')) return new Response('Nemate ovlast za ovu stranicu.', { status: 403 });
+const id = Astro.params.id!;
+let s = await ucitajCiklus(db, id);
+if (!s) return new Response('Ciklus ne postoji.', { status: 404 });
+
+let greska: string | null = null;
+let nedostaci: string[] = [];
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const vrsta = String(f.get('tijelo') ?? '');
+  const sada = new Date();
+  greska = await pokusaj(async () => {
+    const radnja = f.get('radnja');
+    if (radnja === 'dodaj') await postaviClana(s!, vrsta, String(f.get('osoba')), f.get('predstavnik') === 'da', korisnik, sada);
+    else if (radnja === 'ukloni') await ukloniClana(s!, vrsta, String(f.get('osoba')), korisnik);
+    else if (radnja === 'imenuj') nedostaci = await imenujTijelo(s!, vrsta, korisnik, sada);
+  });
+  s = (await ucitajCiklus(db, id))!;
+}
+
+const sada = new Date();
+const kvote = izracunajKvote(s, await brojZaposlenihNaDan(db, s.paket, s.ciklus.godina));
+const zaposlenih = await brojZaposlenihNaDan(db, s.paket, s.ciklus.godina);
+const naziv = (kljuc: string | null) => s!.paket.ocjene.find((o) => o.kljuc === kljuc)?.naziv ?? '–';
+const redci = s.predmeti
+  .map((pp) => {
+    const tekuci = tekuciKorak(izracunajStanje(s!.paket, pp, sada));
+    return { pp, tekuci, zaposlenik: imeOsobe(s!.osobe, pp.predmet.osobaId), kasni: !!tekuci?.rok && tekuci.rok < sada.toISOString().slice(0, 10) };
+  })
+  .sort((a, b) => a.zaposlenik.localeCompare(b.zaposlenik, 'hr'));
+const osobe = [...s.osobe.values()].sort((a, b) => a.prezime.localeCompare(b.prezime, 'hr'));
+const kadrovska = korisnik.uloge.includes('kadrovska');
+---
+
+<Okvir naslov={`Ciklus ${s.ciklus.godina}.`}>
+  {greska && <p class="poruka greska" role="alert">{greska}</p>}
+  {nedostaci.length > 0 && <div class="poruka greska" role="alert"><p>Tijelo nije imenovano:</p><ul>{nedostaci.map((n) => <li>{n}</li>)}</ul></div>}
+
+  <section>
+    <h2>Kvote</h2>
+    <p>Zaposlenih na {hrDatum(`${s.ciklus.godina}-12-31`)}: {zaposlenih} ({s.paket.kvotaDan.izvor.clanak}).</p>
+    <table>
+      <thead><tr><th>Ocjena</th><th>Najviše</th><th>Predloženo ili odlučeno</th><th>Izvor</th></tr></thead>
+      <tbody>
+        {kvote.map((k) => (
+          <tr>
+            <td>{naziv(k.ocjena)}</td>
+            <td>{k.udio * 100} % = {String(k.najvise).replace('.', ',')}</td>
+            <td>{k.predlozeno}{k.prekoraceno && <strong> — prekoračeno</strong>}</td>
+            <td>čl. {k.clanak}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    {s.postavke.zaokruzivanjeKvota === 'bez' && <p>Najveći broj nije zaokružen jer propis ne određuje zaokruživanje; o usklađenju odlučuje Odbor.</p>}
+  </section>
+
+  <section>
+    <h2>Tijela</h2>
+    {s.paket.tijela.map((t) => {
+      const sastav = s!.tijela.get(t.kljuc)!;
+      const red = s!.tijelaRedovi.get(t.kljuc)!;
+      return (
+        <fieldset>
+          <legend>{t.naziv}</legend>
+          <p>
+            {red.imenovanoU ? `Imenovano ${hrDatum(red.imenovanoU)}.` : `Nije imenovano. Potrebno članova: ${s!.postavke.tijela[t.kljuc]?.clanova ?? t.najmanjeClanova} (čl. ${t.izvor.clanak}).`}
+          </p>
+          <ul>
+            {sastav.clanovi.map((c) => (
+              <li>
+                {imeOsobe(s!.osobe, c.osobaId)}{c.predstavnikRadnika && ' — predstavnik radničkog vijeća ili sindikata'}
+                {!red.imenovanoU && kadrovska && (
+                  <form method="post" style="display:inline">
+                    <input type="hidden" name="tijelo" value={t.kljuc} />
+                    <input type="hidden" name="osoba" value={c.osobaId} />
+                    <button type="submit" name="radnja" value="ukloni" style="margin:0 0 0 .5rem;padding:.1rem .5rem">Ukloni</button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+          {!red.imenovanoU && kadrovska && (
+            <form method="post">
+              <input type="hidden" name="tijelo" value={t.kljuc} />
+              <label for={`osoba-${t.kljuc}`}>Dodaj člana</label>
+              <select id={`osoba-${t.kljuc}`} name="osoba">
+                {osobe.filter((o) => !sastav.clanovi.some((c) => c.osobaId === o.id)).map((o) => <option value={o.id}>{o.prezime} {o.ime}</option>)}
+              </select>
+              <label><input type="checkbox" name="predstavnik" value="da" style="width:auto" /> predstavnik radničkog vijeća ili sindikata</label>
+              <button type="submit" name="radnja" value="dodaj">Dodaj</button>
+            </form>
+          )}
+          {!red.imenovanoU && korisnik.uloge.includes('odlucitelj') && (
+            <form method="post">
+              <input type="hidden" name="tijelo" value={t.kljuc} />
+              <button type="submit" name="radnja" value="imenuj">Imenuj tijelo</button>
+            </form>
+          )}
+          {!red.imenovanoU && provjeriSastav(s!, t.kljuc).length > 0 && <p>{provjeriSastav(s!, t.kljuc).join(' ')}</p>}
+        </fieldset>
+      );
+    })}
+  </section>
+
+  <section>
+    <h2>Predmeti ({redci.length})</h2>
+    <p class="bez-ispisa"><a href={`/ciklus/${s.ciklus.id}/registar.csv`}>Popis odluka za unos u Registar zaposlenih (CSV)</a></p>
+    <table>
+      <thead><tr><th>Zaposlenik</th><th>Nadređeni</th><th>Na redu</th><th>Rok</th><th>Ocjena</th><th></th></tr></thead>
+      <tbody>
+        {redci.map(({ pp, tekuci, zaposlenik, kasni }) => (
+          <tr>
+            <td>{zaposlenik}</td>
+            <td>{imeOsobe(s!.osobe, pp.predmet.nadredeniOsobaId)}</td>
+            <td>{pp.predmet.stanje === 'ne-ocjenjuje-se' ? 'ne ocjenjuje se' : tekuci?.def.naziv ?? 'završeno'}</td>
+            <td>{hrDatum(tekuci?.rok)}{kasni && <strong> — kasni</strong>}</td>
+            <td>{naziv(pp.predmet.konacnaOcjena)}</td>
+            <td><a href={`/predmet/${pp.predmet.id}`}>Otvori</a></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+</Okvir>

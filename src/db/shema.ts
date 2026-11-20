@@ -169,7 +169,161 @@ export const pokusajPrijave = sqliteTable(
   (t) => [index('pokusaj_prijave_kljuc').on(t.kljuc, t.vrijeme)],
 );
 
+// ---------- Postupak ----------
+
+export const postavke = sqliteTable('postavke', {
+  id: text('id').primaryKey(),
+  paket: text('paket').notNull(),
+  // JSON provjeren prema obliku postavki i ograničenjima paketa.
+  sadrzaj: text('sadrzaj').notNull(),
+  // Postavke se zaključavaju kad ih ciklus počne koristiti.
+  zakljucanoU: text('zakljucano_u'),
+  stvoreno: text('stvoreno').notNull(),
+});
+
+export const ciklus = sqliteTable(
+  'ciklus',
+  {
+    id: text('id').primaryKey(),
+    godina: integer('godina').notNull(),
+    paket: text('paket').notNull(),
+    paketVerzija: text('paket_verzija').notNull(),
+    postavkeId: text('postavke_id')
+      .notNull()
+      .references(() => postavke.id),
+    stanje: text('stanje', { enum: ['otvoren', 'zakljucen'] }).notNull(),
+    otvoreno: text('otvoreno').notNull(),
+  },
+  (t) => [uniqueIndex('ciklus_godina').on(t.godina)],
+);
+
+export const predmet = sqliteTable(
+  'predmet',
+  {
+    id: text('id').primaryKey(),
+    ciklusId: text('ciklus_id')
+      .notNull()
+      .references(() => ciklus.id),
+    osobaId: text('osoba_id')
+      .notNull()
+      .references(() => osoba.id),
+    nadredeniOsobaId: text('nadredeni_osoba_id').references(() => osoba.id),
+    stanje: text('stanje', { enum: ['u-tijeku', 'ne-ocjenjuje-se', 'odlucen', 'dostavljen', 'zakljucen'] }).notNull(),
+    // Zašto se predmet ne vodi redovnim postupkom, s pozivom na članak.
+    razlog: text('razlog'),
+    // Ocjena koju propis određuje bez postupka (npr. dulja odsutnost).
+    ocjenaPoPropisu: text('ocjena_po_propisu'),
+    konacnaOcjena: text('konacna_ocjena'),
+    otvoreno: text('otvoreno').notNull(),
+  },
+  (t) => [uniqueIndex('predmet_ciklus_osoba').on(t.ciklusId, t.osobaId), index('predmet_nadredeni').on(t.nadredeniOsobaId)],
+);
+
+// Završeni koraci predmeta. Koji je korak na redu, izvodi se iz paketa i ovih redaka.
+export const korak = sqliteTable(
+  'korak',
+  {
+    id: text('id').primaryKey(),
+    predmetId: text('predmet_id')
+      .notNull()
+      .references(() => predmet.id),
+    kljuc: text('kljuc').notNull(),
+    stanje: text('stanje', { enum: ['zavrsen', 'bez-odgovora'] }).notNull(),
+    // Datum na koji se korak računa (npr. datum uvida s papira); od njega teku rokovi.
+    datum: text('datum').notNull(),
+    ishod: text('ishod').notNull(),
+    izvrsioRacunId: text('izvrsio_racun_id').references(() => racun.id),
+    // Kadrovska služba upisala je korak umjesto izvršitelja, na temelju papira.
+    uIme: integer('u_ime', { mode: 'boolean' }).notNull().default(false),
+    zavrsenoU: text('zavrseno_u').notNull(),
+  },
+  (t) => [uniqueIndex('korak_predmet_kljuc').on(t.predmetId, t.kljuc)],
+);
+
+// Evidencija rada tijekom godine: primjedbe, upozorenja, pohvale, postignuća.
+export const zapis = sqliteTable(
+  'zapis',
+  {
+    id: text('id').primaryKey(),
+    predmetId: text('predmet_id')
+      .notNull()
+      .references(() => predmet.id),
+    vrsta: text('vrsta', { enum: ['primjedba', 'pisano-upozorenje', 'pohvala', 'postignuce'] }).notNull(),
+    datum: text('datum').notNull(),
+    opis: text('opis').notNull(),
+    autorRacunId: text('autor_racun_id')
+      .notNull()
+      .references(() => racun.id),
+    stvoreno: text('stvoreno').notNull(),
+  },
+  (t) => [index('zapis_predmet').on(t.predmetId, t.datum)],
+);
+
+export const tijelo = sqliteTable(
+  'tijelo',
+  {
+    id: text('id').primaryKey(),
+    ciklusId: text('ciklus_id')
+      .notNull()
+      .references(() => ciklus.id),
+    vrsta: text('vrsta').notNull(),
+    // Sastav je potvrđen odlukom o imenovanju; do tada tijelo ne može odlučivati.
+    imenovanoU: text('imenovano_u'),
+  },
+  (t) => [uniqueIndex('tijelo_ciklus_vrsta').on(t.ciklusId, t.vrsta)],
+);
+
+export const clanTijela = sqliteTable(
+  'clan_tijela',
+  {
+    id: text('id').primaryKey(),
+    tijeloId: text('tijelo_id')
+      .notNull()
+      .references(() => tijelo.id),
+    osobaId: text('osoba_id')
+      .notNull()
+      .references(() => osoba.id),
+    predstavnikRadnika: integer('predstavnik_radnika', { mode: 'boolean' }).notNull().default(false),
+  },
+  (t) => [uniqueIndex('clan_tijela_osoba').on(t.tijeloId, t.osobaId)],
+);
+
+export const glas = sqliteTable(
+  'glas',
+  {
+    id: text('id').primaryKey(),
+    predmetId: text('predmet_id')
+      .notNull()
+      .references(() => predmet.id),
+    korakKljuc: text('korak_kljuc').notNull(),
+    osobaId: text('osoba_id')
+      .notNull()
+      .references(() => osoba.id),
+    ocjena: text('ocjena').notNull(),
+    vrijeme: text('vrijeme').notNull(),
+  },
+  (t) => [uniqueIndex('glas_predmet_korak_osoba').on(t.predmetId, t.korakKljuc, t.osobaId)],
+);
+
 // ---------- Dokazi ----------
+
+export const bodovi = sqliteTable(
+  'bodovi',
+  {
+    id: text('id').primaryKey(),
+    osobaId: text('osoba_id')
+      .notNull()
+      .references(() => osoba.id),
+    godina: integer('godina').notNull(),
+    bodovi: integer('bodovi').notNull(),
+    // 'odluka' ili 'pocetno-stanje'.
+    izvor: text('izvor').notNull(),
+    predmetId: text('predmet_id').references(() => predmet.id),
+    stvoreno: text('stvoreno').notNull(),
+  },
+  (t) => [uniqueIndex('bodovi_osoba_godina').on(t.osobaId, t.godina)],
+);
+
 
 // Zapisi se samo dodaju. Izmjenu i brisanje odbija i sama baza
 // (okidači u migraciji 0001_revizija_zastita.sql).

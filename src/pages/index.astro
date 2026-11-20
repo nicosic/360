@@ -1,20 +1,66 @@
 ---
 import Okvir from '../layouts/Okvir.astro';
-import { ADMINISTRATOR, ulogeRacuna } from '../lib/ovlasti';
+import { imeOsobe, sviCiklusi, ucitajCiklus } from '../lib/postupak/ciklus';
+import { hrDatum } from '../lib/postupak/pristup';
+import { izracunajStanje, svojstvoZaKorak, tekuciKorak } from '../lib/postupak/stroj';
 
-const sjednica = Astro.locals.sjednica!;
-const uloge = await ulogeRacuna(Astro.locals.okruzenje.db, sjednica.racunId, new Date());
+const korisnik = Astro.locals.korisnik!;
+const { db } = Astro.locals.okruzenje;
+const sada = new Date();
+
+const zadaci: { predmetId: string; zaposlenik: string; korak: string; rok: string | null; godina: number }[] = [];
+const moji: { predmetId: string; godina: number; stanje: string }[] = [];
+for (const c of (await sviCiklusi(db)).filter((x) => x.stanje === 'otvoren')) {
+  const s = (await ucitajCiklus(db, c.id))!;
+  for (const pp of s.predmeti) {
+    const tekuci = tekuciKorak(izracunajStanje(s.paket, pp, sada));
+    if (tekuci && svojstvoZaKorak(tekuci.def, pp, s.tijela, korisnik) === 'izvrsitelj') {
+      zadaci.push({ predmetId: pp.predmet.id, zaposlenik: imeOsobe(s.osobe, pp.predmet.osobaId), korak: tekuci.def.naziv, rok: tekuci.rok, godina: c.godina });
+    }
+    if (korisnik.osobaId && pp.predmet.osobaId === korisnik.osobaId) {
+      moji.push({ predmetId: pp.predmet.id, godina: c.godina, stanje: tekuci?.def.naziv ?? pp.predmet.stanje });
+    }
+  }
+}
+zadaci.sort((a, b) => (a.rok ?? '9').localeCompare(b.rok ?? '9'));
 ---
 
-<Okvir naslov="Početna">
-  <p>Prijavljeni ste kao <strong>{sjednica.eposta}</strong>.</p>
-  <p>Uloge: {uloge.length ? uloge.join(', ') : 'nema dodijeljenih uloga'}.</p>
+<Okvir naslov="Moji zadaci">
   {
-    uloge.includes(ADMINISTRATOR) && (
-      <p>
-        <a href="/revizija">Revizijski trag</a>
-      </p>
+    zadaci.length === 0 ? (
+      <p>Trenutačno nema koraka koji čekaju na vas.</p>
+    ) : (
+      <table>
+        <thead>
+          <tr><th>Rok</th><th>Korak</th><th>Zaposlenik</th><th>Godina</th><th></th></tr>
+        </thead>
+        <tbody>
+          {zadaci.map((z) => (
+            <tr>
+              <td>{hrDatum(z.rok)}</td>
+              <td>{z.korak}</td>
+              <td>{z.zaposlenik}</td>
+              <td>{z.godina}.</td>
+              <td><a href={`/predmet/${z.predmetId}`}>Otvori</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     )
   }
-  <p>Postupak ocjenjivanja još nije ugrađen; ovo je temelj platforme: prijava, uloge i revizijski trag.</p>
+  {
+    moji.length > 0 && (
+      <section>
+        <h2>Moje ocjenjivanje</h2>
+        <ul>
+          {moji.map((m) => (
+            <li>
+              <a href={`/predmet/${m.predmetId}`}>Ocjenjivanje za {m.godina}.</a> — {m.stanje}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+  {!korisnik.osobaId && <p>Vaš račun nije povezan sa zaposlenikom, pa nemate vlastiti predmet ocjenjivanja.</p>}
 </Okvir>

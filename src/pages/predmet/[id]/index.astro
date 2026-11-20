@@ -1,0 +1,253 @@
+---
+import Okvir from '../../../layouts/Okvir.astro';
+import { pokusaj } from '../../../lib/obrazac';
+import { imeOsobe } from '../../../lib/postupak/ciklus';
+import { hrDatum, mozeVidjeti, NAZIVI_STANJA, ucitajPredmet } from '../../../lib/postupak/pristup';
+import { danas } from '../../../lib/postupak/rokovi';
+import { dodajZapis, glasuj, izracunajStanje, izvrsiKorak, kriterijiZaPredmet, svojstvoZaKorak, tekuciKorak, temeljOdluke } from '../../../lib/postupak/stroj';
+import { zabiljezi } from '../../../lib/revizija';
+
+const korisnik = Astro.locals.korisnik!;
+const { db } = Astro.locals.okruzenje;
+const id = Astro.params.id!;
+let ucitano = await ucitajPredmet(db, id);
+if (!ucitano) return new Response('Predmet ne postoji.', { status: 404 });
+if (!mozeVidjeti(ucitano.s, ucitano.pp, korisnik, new Date())) {
+  await zabiljezi(db, { racunId: korisnik.racunId, radnja: 'pristup.odbijen', predmetVrsta: 'predmet', predmetId: id });
+  return new Response('Nemate ovlast za ovaj predmet.', { status: 403 });
+}
+
+let greska: string | null = null;
+let obavijest = '';
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const { s, pp } = ucitano;
+  const sada = new Date();
+  const radnja = String(f.get('radnja') ?? '');
+  const kljuc = String(f.get('korak') ?? '');
+  const txt = (ime: string) => String(f.get(ime) ?? '');
+  greska = await pokusaj(async () => {
+    if (radnja === 'zapis') {
+      await dodajZapis(db, pp, { vrsta: txt('vrsta') as never, datum: txt('datum'), opis: txt('opis') }, korisnik, sada);
+    } else if (radnja === 'glas') {
+      const ishod = await glasuj(s, pp, kljuc, txt('ocjena'), korisnik, sada);
+      obavijest = ishod.odluceno ? 'Odluka tijela je donesena.' : `Glas je zabilježen (${ishod.glasova} od potrebnih ${ishod.potrebno}).`;
+    } else if (radnja === 'bez') {
+      await izvrsiKorak(s, pp, kljuc, { bez: true }, korisnik, sada);
+    } else if (radnja === 'korak') {
+      const def = s.paket.koraci.find((k) => k.kljuc === kljuc);
+      let unos: unknown = {};
+      if (def?.vrsta === 'obrazac' || def?.vrsta === 'odgovor-u-roku') unos = { tekst: txt('tekst') };
+      else if (def?.vrsta === 'prijedlog') {
+        unos = {
+          ocjeneKriterija: Object.fromEntries(kriterijiZaPredmet(s.paket, s.postavke).map((k) => [k.kljuc, txt(`k-${k.kljuc}`)])),
+          napomene: txt('napomene') || undefined,
+          ocjena: txt('ocjena'),
+          obrazlozenje: txt('obrazlozenje'),
+        };
+      } else if (def?.vrsta === 'uvid') unos = { datum: txt('datum') || undefined };
+      else if (def?.vrsta === 'odluka-pojedinca') unos = { obrazlozenje: txt('obrazlozenje') };
+      else if (def?.vrsta === 'dostava') unos = { datum: txt('datum'), nacin: txt('nacin') };
+      else if (def?.vrsta === 'vanjska-radnja') unos = { datum: txt('datum') };
+      await izvrsiKorak(s, pp, kljuc, unos, korisnik, sada);
+    }
+  });
+  ucitano = (await ucitajPredmet(db, id))!;
+}
+
+const { s, pp } = ucitano;
+const sada = new Date();
+const stanje = izracunajStanje(s.paket, pp, sada);
+const tekuci = tekuciKorak(stanje);
+const svojstvo = tekuci ? svojstvoZaKorak(tekuci.def, pp, s.tijela, korisnik) : null;
+const ocjene = [...s.paket.ocjene].sort((a, b) => b.rang - a.rang);
+const naziv = (kljuc: unknown) => s.paket.ocjene.find((o) => o.kljuc === kljuc)?.naziv ?? '–';
+const kriteriji = kriterijiZaPredmet(s.paket, s.postavke);
+const jeZaposlenik = korisnik.osobaId === pp.predmet.osobaId;
+const vodiEvidenciju = korisnik.osobaId === pp.predmet.nadredeniOsobaId || korisnik.uloge.includes('kadrovska');
+const temelj = temeljOdluke(s.paket, pp);
+const mojGlas = tekuci ? pp.glasovi.find((g) => g.korakKljuc === tekuci.def.kljuc && g.osobaId === korisnik.osobaId)?.ocjena : undefined;
+const NAZIVI_ZAPISA: Record<string, string> = { 'primjedba': 'primjedba', 'pisano-upozorenje': 'pisano upozorenje', 'pohvala': 'pohvala', 'postignuce': 'izuzetno postignuće' };
+---
+
+<Okvir naslov={`${imeOsobe(s.osobe, pp.predmet.osobaId)} — ocjenjivanje za ${pp.godina}.`}>
+  {greska && <p class="poruka greska" role="alert">{greska}</p>}
+  {obavijest && <p class="poruka" role="status">{obavijest}</p>}
+  <p>
+    Neposredno nadređeni: {imeOsobe(s.osobe, pp.predmet.nadredeniOsobaId)}.
+    {pp.predmet.razlog && <strong> {pp.predmet.razlog}</strong>}
+    {pp.predmet.konacnaOcjena && <span> Ocjena: <strong>{naziv(pp.predmet.konacnaOcjena)}</strong>.</span>}
+  </p>
+  <p class="bez-ispisa"><a href={`/predmet/${pp.predmet.id}/ispis`}>Ispis dokumenata za potpis</a></p>
+
+  {
+    tekuci && svojstvo && (
+      <section>
+        <h2>Na redu: {tekuci.def.naziv}</h2>
+        <p>
+          {tekuci.rok && <>Rok: <strong>{hrDatum(tekuci.rok)}</strong>. </>}
+          Izvor: čl. {tekuci.def.izvor.clanak}.
+          {svojstvo === 'u-ime' && <strong> Upisujete umjesto zaposlenika, na temelju papira.</strong>}
+        </p>
+
+        {(tekuci.def.vrsta === 'obrazac' || tekuci.def.vrsta === 'odgovor-u-roku') && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            <label for="tekst">{tekuci.def.naziv}</label>
+            <textarea id="tekst" name="tekst" rows="8"></textarea>
+            <p>Ne upisujte zdravstvene ni druge osjetljive podatke koji nisu nužni.</p>
+            <button type="submit" name="radnja" value="korak">Predaj</button>
+            {tekuci.def.neobavezno && <button type="submit" name="radnja" value="bez">Ne želim predati</button>}
+          </form>
+        )}
+
+        {tekuci.def.vrsta === 'prijedlog' && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            <fieldset>
+              <legend>Ocjene po kriterijima</legend>
+              {kriteriji.map((k) => (
+                <>
+                  <label for={`k-${k.kljuc}`}>{k.naziv}</label>
+                  {k.opis && <p>{k.opis}</p>}
+                  <select id={`k-${k.kljuc}`} name={`k-${k.kljuc}`} required>
+                    <option value="">— odaberite —</option>
+                    {ocjene.map((o) => <option value={o.kljuc}>{o.naziv}</option>)}
+                  </select>
+                </>
+              ))}
+            </fieldset>
+            <label for="napomene">Napomene (pohvale, postignuća, primjedbe i upozorenja koja bitno utječu na ocjenu)</label>
+            <textarea id="napomene" name="napomene" rows="4"></textarea>
+            <label for="ocjena">Prijedlog ocjene</label>
+            <select id="ocjena" name="ocjena" required>
+              <option value="">— odaberite —</option>
+              {ocjene.map((o) => <option value={o.kljuc}>{o.naziv}</option>)}
+            </select>
+            <label for="obrazlozenje">Obrazloženje</label>
+            <textarea id="obrazlozenje" name="obrazlozenje" rows="5" required></textarea>
+            <button type="submit" name="radnja" value="korak">Predaj prijedlog</button>
+          </form>
+        )}
+
+        {tekuci.def.vrsta === 'uvid' && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            {svojstvo === 'u-ime' ? (
+              <>
+                <label for="datum">Datum uvida s potpisanog papira</label>
+                <input id="datum" name="datum" type="date" max={danas(sada)} required />
+              </>
+            ) : (
+              <p>Potvrdom izjavljujete da ste danas upoznati s prijedlogom ocjene prikazanim niže.</p>
+            )}
+            <button type="submit" name="radnja" value="korak">Potvrdi uvid</button>
+          </form>
+        )}
+
+        {tekuci.def.vrsta === 'odluka-tijela' && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            <label for="glas">Vaš glas{mojGlas && ` (trenutačno: ${naziv(mojGlas)})`}</label>
+            <select id="glas" name="ocjena" required>
+              <option value="">— odaberite —</option>
+              {ocjene.map((o) => <option value={o.kljuc}>{o.naziv}</option>)}
+            </select>
+            <p>Odluka je donesena kad jedna ocjena dobije većinu glasova svih imenovanih članova.</p>
+            <button type="submit" name="radnja" value="glas">Glasuj</button>
+          </form>
+        )}
+
+        {tekuci.def.vrsta === 'odluka-pojedinca' && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            <p>Odluka se temelji na konačnom prijedlogu, odnosno obvezujućem mišljenju Odbora: <strong>{naziv(temelj)}</strong> (čl. {s.paket.odluka.izvor.clanak}).</p>
+            <label for="obrazlozenje">Obrazloženje odluke</label>
+            <textarea id="obrazlozenje" name="obrazlozenje" rows="6" required></textarea>
+            <button type="submit" name="radnja" value="korak">Donesi odluku</button>
+          </form>
+        )}
+
+        {tekuci.def.vrsta === 'dostava' && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            <label for="datum">Datum dostave</label>
+            <input id="datum" name="datum" type="date" max={danas(sada)} required />
+            <label for="nacin">Način dostave</label>
+            <input id="nacin" name="nacin" placeholder="npr. osobno uz potpis" required />
+            <button type="submit" name="radnja" value="korak">Zabilježi dostavu</button>
+          </form>
+        )}
+
+        {tekuci.def.vrsta === 'vanjska-radnja' && (
+          <form method="post">
+            <input type="hidden" name="korak" value={tekuci.def.kljuc} />
+            <label for="datum">Datum unosa</label>
+            <input id="datum" name="datum" type="date" max={danas(sada)} required />
+            <button type="submit" name="radnja" value="korak">Zabilježi unos</button>
+          </form>
+        )}
+      </section>
+    )
+  }
+  {tekuci && !svojstvo && <p class="poruka">Na redu je korak „{tekuci.def.naziv}“, koji izvršava netko drugi{tekuci.rok && ` (rok ${hrDatum(tekuci.rok)})`}.</p>}
+
+  <section>
+    <h2>Tijek postupka</h2>
+    <table>
+      <thead><tr><th>Korak</th><th>Stanje</th><th>Rok</th><th>Datum</th><th>Sadržaj</th></tr></thead>
+      <tbody>
+        {stanje.map((k) => (
+          <tr>
+            <td>{k.def.naziv}<br /><small>čl. {k.def.izvor.clanak}</small></td>
+            <td>{NAZIVI_STANJA[k.stanje]}{k.red?.uIme && ' (upisano s papira)'}</td>
+            <td>{hrDatum(k.rok)}</td>
+            <td>{hrDatum(k.red?.datum)}</td>
+            <td>
+              {k.ishod?.ocjena && <strong>{naziv(k.ishod.ocjena)}</strong>}
+              {typeof k.ishod?.tekst === 'string' && <p style="white-space:pre-wrap;margin:0">{k.ishod.tekst}</p>}
+              {typeof k.ishod?.obrazlozenje === 'string' && <p style="white-space:pre-wrap;margin:0">{k.ishod.obrazlozenje}</p>}
+              {k.ishod?.ocjeneKriterija && (
+                <ul>{kriteriji.map((kr) => <li>{kr.naziv}: {naziv((k.ishod!.ocjeneKriterija as Record<string, string>)[kr.kljuc])}</li>)}</ul>
+              )}
+              {typeof k.ishod?.napomene === 'string' && <p style="white-space:pre-wrap;margin:0">Napomene: {k.ishod.napomene}</p>}
+              {k.ishod?.glasovi && !jeZaposlenik && (
+                <small>Glasovi: {Object.entries(k.ishod.glasovi as Record<string, number>).map(([o, n]) => `${naziv(o)} ${n}`).join(', ')} od {String(k.ishod.clanova)} članova.</small>
+              )}
+              {typeof k.ishod?.nacin === 'string' && <small>{k.ishod.nacin}</small>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Evidencija rada</h2>
+    {pp.zapisi.length === 0 ? <p>Nema zapisa.</p> : (
+      <table>
+        <thead><tr><th>Datum</th><th>Vrsta</th><th>Opis</th></tr></thead>
+        <tbody>
+          {[...pp.zapisi].sort((a, b) => a.datum.localeCompare(b.datum)).map((z) => (
+            <tr><td>{hrDatum(z.datum)}</td><td>{NAZIVI_ZAPISA[z.vrsta]}</td><td style="white-space:pre-wrap">{z.opis}</td></tr>
+          ))}
+        </tbody>
+      </table>
+    )}
+    {vodiEvidenciju && pp.predmet.stanje === 'u-tijeku' && (
+      <form method="post" class="bez-ispisa">
+        <fieldset>
+          <legend>Novi zapis</legend>
+          <label for="vrsta">Vrsta</label>
+          <select id="vrsta" name="vrsta">{Object.entries(NAZIVI_ZAPISA).map(([v, n]) => <option value={v}>{n}</option>)}</select>
+          <label for="z-datum">Datum</label>
+          <input id="z-datum" name="datum" type="date" max={danas(sada)} required />
+          <label for="opis">Opis</label>
+          <textarea id="opis" name="opis" rows="3" required></textarea>
+          <p>Pisano upozorenje na mogućnost ocjene „ne zadovoljava“ mora biti izdano najkasnije {hrDatum(`${pp.godina}-09-30`)} (čl. {s.paket.upozorenje.izvor.clanak}).</p>
+          <button type="submit" name="radnja" value="zapis">Dodaj zapis</button>
+        </fieldset>
+      </form>
+    )}
+  </section>
+</Okvir>

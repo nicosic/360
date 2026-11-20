@@ -1,0 +1,64 @@
+---
+// Dokumenti za ispis i vlastoručni potpis: prijedlog ocjene s Izvješćem i odluka o ocjeni.
+import Okvir from '../../../layouts/Okvir.astro';
+import { imeOsobe } from '../../../lib/postupak/ciklus';
+import { hrDatum, mozeVidjeti, ucitajPredmet } from '../../../lib/postupak/pristup';
+import { kriterijiZaPredmet } from '../../../lib/postupak/stroj';
+
+const korisnik = Astro.locals.korisnik!;
+const ucitano = await ucitajPredmet(Astro.locals.okruzenje.db, Astro.params.id!);
+if (!ucitano) return new Response('Predmet ne postoji.', { status: 404 });
+const { s, pp } = ucitano;
+if (!mozeVidjeti(s, pp, korisnik, new Date())) return new Response('Nemate ovlast za ovaj predmet.', { status: 403 });
+
+const ishod = (kljuc: string) => {
+  const red = pp.koraci.find((k) => k.kljuc === kljuc);
+  return red ? { red, podaci: JSON.parse(red.ishod) as Record<string, any> } : null;
+};
+const naziv = (kljuc: unknown) => s.paket.ocjene.find((o) => o.kljuc === kljuc)?.naziv ?? '–';
+const prijedlog = ishod('prijedlog');
+const odluka = ishod(s.paket.odluka.korak);
+const kriteriji = kriterijiZaPredmet(s.paket, s.postavke);
+const zaposlenik = imeOsobe(s.osobe, pp.predmet.osobaId);
+---
+
+<Okvir naslov={`Dokumenti — ${zaposlenik}, ${pp.godina}.`}>
+  <p class="bez-ispisa">Ispišite stranicu iz preglednika. Potpisani primjerak ostaje u spisu, a datum potpisa kadrovska služba upisuje u predmet.</p>
+  <p class="bez-ispisa"><a href={`/predmet/${pp.predmet.id}`}>Natrag na predmet</a></p>
+
+  {!prijedlog && !odluka && <p>Još nema dokumenata za ispis.</p>}
+
+  {
+    prijedlog && (
+      <article>
+        <h2>Izvješće o učinkovitosti rada i prijedlog ocjene za {pp.godina}. godinu</h2>
+        <p>Zaposlenik: <strong>{zaposlenik}</strong><br />Neposredno nadređeni: {imeOsobe(s.osobe, pp.predmet.nadredeniOsobaId)}<br />Datum prijedloga: {hrDatum(prijedlog.red.datum)}</p>
+        <table>
+          <thead><tr><th>Kriterij</th><th>Ocjena</th></tr></thead>
+          <tbody>{kriteriji.map((k) => <tr><td>{k.naziv}</td><td>{naziv(prijedlog.podaci.ocjeneKriterija?.[k.kljuc])}</td></tr>)}</tbody>
+        </table>
+        {prijedlog.podaci.napomene && <p style="white-space:pre-wrap"><strong>Napomene:</strong> {prijedlog.podaci.napomene}</p>}
+        <p><strong>Prijedlog ocjene: {naziv(prijedlog.podaci.ocjena)}</strong></p>
+        <p style="white-space:pre-wrap"><strong>Obrazloženje:</strong> {prijedlog.podaci.obrazlozenje}</p>
+        <p>
+          Zaposleniku je prijedlog ocjene s prilozima dostavljen na uvid dana ______________. Zaposlenik je upoznat da na prijedlog ocjene ima pravo
+          očitovanja Povjerenstvu za predlaganje konačne ocjene u roku od osam dana od dana dostavljanja prijedloga na uvid (čl. 8. st. 3. Uredbe).
+        </p>
+        <p style="margin-top:3rem">Potpis zaposlenika: ______________________&nbsp;&nbsp;&nbsp; Potpis neposredno nadređenog: ______________________</p>
+      </article>
+    )
+  }
+
+  {
+    odluka && (
+      <article style="break-before:page">
+        <h2>Odluka o ocjeni za {pp.godina}. godinu</h2>
+        <p>Zaposlenik: <strong>{zaposlenik}</strong><br />Datum odluke: {hrDatum(odluka.red.datum)}</p>
+        <p><strong>Ocjena: {naziv(odluka.podaci.ocjena)}</strong></p>
+        <p style="white-space:pre-wrap"><strong>Obrazloženje:</strong> {odluka.podaci.obrazlozenje}</p>
+        <p>Odluka je zaposleniku dostavljena dana ______________.</p>
+        <p style="margin-top:3rem">Potpis donositelja odluke: ______________________&nbsp;&nbsp;&nbsp; Potpis zaposlenika: ______________________</p>
+      </article>
+    )
+  }
+</Okvir>

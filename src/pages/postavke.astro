@@ -1,0 +1,80 @@
+---
+import Okvir from '../layouts/Okvir.astro';
+import { pokusaj } from '../lib/obrazac';
+import { spremiPostavke, ucitajPostavke } from '../lib/postupak/ciklus';
+import { sviPaketi } from '../paketi';
+
+const korisnik = Astro.locals.korisnik!;
+const { db } = Astro.locals.okruzenje;
+if (!korisnik.uloge.some((u) => u === 'kadrovska' || u === 'administrator')) return new Response('Nemate ovlast za ovu stranicu.', { status: 403 });
+
+const paket = sviPaketi()[0]!;
+let poruka = '';
+let greske: string[] = [];
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  const kriteriji = String(f.get('kriteriji') ?? '')
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => {
+      const [kljuc = '', naziv = '', opis] = l.split('|').map((d) => d.trim());
+      return { kljuc, naziv, ...(opis ? { opis } : {}) };
+    });
+  const unos = {
+    temelj: { pravilnik: String(f.get('pravilnik') ?? '').trim() || undefined, potvrdaKupca: String(f.get('potvrda') ?? '').trim() || undefined },
+    posebniKriteriji: kriteriji,
+    tijela: Object.fromEntries(paket.tijela.map((t) => [t.kljuc, { clanova: Number(f.get(`clanova-${t.kljuc}`)) }])),
+    zaokruzivanjeKvota: String(f.get('zaokruzivanje') ?? 'bez'),
+  };
+  const greska = await pokusaj(async () => {
+    greske = await spremiPostavke(db, paket, unos, korisnik, new Date());
+  });
+  if (greska) greske = [greska];
+  if (greske.length === 0) poruka = 'Postavke su spremljene kao nova verzija. Vrijede za cikluse koji se otvore nakon ovoga.';
+}
+const p = await ucitajPostavke(db, paket);
+const s = p.sadrzaj;
+---
+
+<Okvir naslov="Postavke">
+  <p>Paket pravila: <strong>{paket.naziv}</strong> ({paket.oznaka}, verzija {paket.verzija}).</p>
+  <p>Ovdje se podešava samo ono što propis ostavlja pravilniku službe. Koraci, rokovi i propisani kriteriji ne mogu se mijenjati.</p>
+  {poruka && <p class="poruka" role="status">{poruka}</p>}
+  {greske.length > 0 && <div class="poruka greska" role="alert"><ul>{greske.map((g) => <li>{g}</li>)}</ul></div>}
+  {p.zakljucano && <p class="poruka">Trenutačna verzija je zaključana jer je koristi otvoreni ciklus. Spremanjem nastaje nova verzija za sljedeći ciklus.</p>}
+  <form method="post">
+    <fieldset>
+      <legend>Temelj postavki</legend>
+      <label for="pravilnik">Pravilnik službe (naziv i broj Narodnih novina)</label>
+      <input id="pravilnik" name="pravilnik" value={s.temelj.pravilnik ?? ''} />
+      <label for="potvrda">Ako pravilnika nema: tko je i kada potvrdio ove postavke</label>
+      <input id="potvrda" name="potvrda" value={s.temelj.potvrdaKupca ?? ''} />
+    </fieldset>
+    <fieldset>
+      <legend>Posebni kriteriji</legend>
+      <label for="kriteriji">Jedan kriterij po retku: ključ | naziv | opis</label>
+      <textarea id="kriteriji" name="kriteriji" rows="5">{s.posebniKriteriji.map((k) => [k.kljuc, k.naziv, k.opis ?? ''].join(' | ')).join('\n')}</textarea>
+      <p>Ključ: mala slova, znamenke i crtica, npr. <code>rad-s-ucenicima</code>.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Tijela</legend>
+      {paket.tijela.map((t) => (
+        <>
+          <label for={`clanova-${t.kljuc}`}>{t.naziv}: broj članova (najmanje {t.najmanjeClanova}, neparan)</label>
+          <input id={`clanova-${t.kljuc}`} name={`clanova-${t.kljuc}`} type="number" min={t.najmanjeClanova} step="2" value={s.tijela[t.kljuc]?.clanova ?? t.najmanjeClanova} />
+        </>
+      ))}
+    </fieldset>
+    <fieldset>
+      <legend>Kvote</legend>
+      <label for="zaokruzivanje">Zaokruživanje najvećeg broja ocjena (propis ga ne određuje)</label>
+      <select id="zaokruzivanje" name="zaokruzivanje">
+        {[['bez', 'bez zaokruživanja'], ['nadolje', 'na niži cijeli broj'], ['najblize', 'na najbliži cijeli broj'], ['nagore', 'na viši cijeli broj']].map(([v, n]) => (
+          <option value={v} selected={s.zaokruzivanjeKvota === v}>{n}</option>
+        ))}
+      </select>
+    </fieldset>
+    <button type="submit">Spremi postavke</button>
+  </form>
+</Okvir>

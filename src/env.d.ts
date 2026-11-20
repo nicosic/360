@@ -14,5 +14,7 @@ declare namespace App {
     sjednica: import('./lib/prijava/sjednica').AktivnaSjednica | null;
     verzija: string;
     ispitna: boolean;
+    /** Postavljen kad je sjednica potpuna. */
+    korisnik: import('./lib/postupak/stroj').Korisnik | null;
   }
 }

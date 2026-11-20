@@ -1,4 +1,5 @@
 import { defineMiddleware } from 'astro:middleware';
+import { ucitajKorisnika } from './lib/korisnik';
 import { imeKolacica } from './lib/prijava/kolacic';
 import { ucitajSjednicu } from './lib/prijava/sjednica';
 import { ispitna, stvoriOkruzenje, verzija } from './platforma/okolina';
@@ -25,6 +26,7 @@ export const onRequest = defineMiddleware(async (kontekst, dalje) => {
   const token = kontekst.cookies.get(imeKolacica(kontekst.url))?.value;
   const sjednica = await ucitajSjednicu(okruzenje.db, token, new Date());
   kontekst.locals.sjednica = sjednica;
+  kontekst.locals.korisnik = sjednica?.razina === 'potpuna' ? await ucitajKorisnika(okruzenje.db, sjednica.racunId, new Date()) : null;
 
   let odgovor: Response;
   if (JAVNE.has(put)) {

@@ -7,18 +7,22 @@ paket ostavlja otvorenima kroz postavke kupca.
 Svaki kupac ima vlastitu instancu: aplikaciju na Cloudflare Workersima, D1 bazu i R2 spremište
 (oboje s jurisdikcijom „eu“) te poddomenu.
 
-## Što je izrađeno (prvi korak)
+## Što je izrađeno
 
-- projekt u Astru, stranice se slažu na poslužitelju
-- shema baze za organizaciju, pristup i revizijski trag (`src/db/shema.ts`, `migrations/`)
-- prijava bez lozinke: jednokratni kod e-poštom, zatim obvezni kod iz aplikacije
-- sjednice u bazi instance: istek nakon 30 minuta neaktivnosti i najkasnije nakon 12 sati
-- revizijski trag koji se samo dodaje, s lancem kontrolnih zbrojeva; izmjenu i brisanje odbija i baza
-- skripte za otvaranje instance, migracije i prvog administratora (`scripts/`)
+- prijava bez lozinke s obveznim drugim faktorom, sjednice u bazi instance
+- revizijski trag koji se samo dodaje, s lancem kontrolnih zbrojeva
+- paketi pravila (`src/paketi/`): postupak opisan podacima, s izvorom uz svako pravilo;
+  prvi paket je za javne službe (Uredba NN 127/24)
+- postavke kupca: posebni kriteriji, broj članova tijela, zaokruživanje kvota
+- uvoz organizacije iz CSV-a, s probnim prolazom
+- postupak (`src/lib/postupak/`): otvaranje ciklusa, evidencija rada, samoprocjena, prijedlog,
+  uvid, očitovanje, glasovanje Povjerenstva i Odbora s izuzećima, odluka, dostava, unos u registar
+- kvote, bodovi, ispis dokumenata za potpis i popis odluka za Registar zaposlenih
+- skripte za otvaranje instance, postavljanje, migracije i prvog administratora (`scripts/`)
 
-Još nije izrađeno: paketi pravila, postupak, obrasci, dokumenti, uvoz organizacije i slanje
-e-pošte u produkciji (pružatelj nije odabran; postoji samo razvojna izvedba koja kod ispisuje
-u zapis rada).
+Još nije izrađeno: paket za državna tijela, ocjenjivanje čelnika, više razdoblja i više
+nadređenih u godini, rad kod više poslodavaca, učitavanje skenova, obavijesti e-poštom i
+slanje e-pošte u produkciji (pružatelj nije odabran).
 
 ## Lokalni rad
 

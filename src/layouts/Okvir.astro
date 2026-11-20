@@ -3,7 +3,9 @@ interface Props {
   naslov: string;
 }
 const { naslov } = Astro.props;
-const { sjednica, okruzenje, verzija, ispitna } = Astro.locals;
+const { sjednica, okruzenje, verzija, ispitna, korisnik } = Astro.locals;
+const uloge = korisnik?.uloge ?? [];
+const ima = (...trazene: string[]) => trazene.some((u) => uloge.includes(u));
 ---
 
 <!doctype html>
@@ -33,6 +35,17 @@ const { sjednica, okruzenje, verzija, ispitna } = Astro.locals;
         )
       }
     </header>
+    {
+      korisnik && (
+        <nav aria-label="Glavni izbornik">
+          <a href="/">Moji zadaci</a>
+          {ima('kadrovska', 'odlucitelj') && <a href="/ciklus">Ciklusi</a>}
+          {ima('kadrovska', 'administrator') && <a href="/organizacija">Organizacija</a>}
+          {ima('kadrovska', 'administrator') && <a href="/postavke">Postavke</a>}
+          {ima('administrator') && <a href="/revizija">Revizijski trag</a>}
+        </nav>
+      )
+    }
     <main>
       <h1>{naslov}</h1>
       <slot />
@@ -49,7 +62,7 @@ const { sjednica, okruzenje, verzija, ispitna } = Astro.locals;
   }
   body {
     margin: 0 auto;
-    max-width: 44rem;
+    max-width: 60rem;
     padding: 1rem;
   }
   header,
@@ -63,6 +76,40 @@ const { sjednica, okruzenje, verzija, ispitna } = Astro.locals;
   header {
     border-bottom: 1px solid color-mix(in srgb, currentColor 25%, transparent);
     padding-bottom: 0.75rem;
+  }
+  nav {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0;
+  }
+  textarea,
+  select {
+    font: inherit;
+    padding: 0.5rem;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  select {
+    max-width: 24rem;
+  }
+  fieldset {
+    margin: 1rem 0;
+    border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  }
+  .greska {
+    border-left-color: #b00020;
+  }
+  @media print {
+    header,
+    nav,
+    footer,
+    .bez-ispisa {
+      display: none;
+    }
+    body {
+      max-width: none;
+    }
   }
   footer {
     margin-top: 3rem;

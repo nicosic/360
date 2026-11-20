@@ -15,6 +15,13 @@
       "when": 1795081928764,
       "tag": "0001_revizija_zastita",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795184638050,
+      "tag": "0002_postupak",
+      "breakpoints": true
     }
   ]
 }

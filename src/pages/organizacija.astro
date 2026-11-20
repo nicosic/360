@@ -1,0 +1,82 @@
+---
+import { asc } from 'drizzle-orm';
+import { jedinica, osoba, racun, raspored } from '../db/shema';
+import Okvir from '../layouts/Okvir.astro';
+import { STUPCI, uvezi, type IshodUvoza } from '../lib/organizacija/uvoz';
+
+const korisnik = Astro.locals.korisnik!;
+const { db } = Astro.locals.okruzenje;
+if (!korisnik.uloge.some((u) => u === 'kadrovska' || u === 'administrator')) return new Response('Nemate ovlast za ovu stranicu.', { status: 403 });
+
+let ishod: IshodUvoza | null = null;
+let sadrzaj = '';
+if (Astro.request.method === 'POST') {
+  const podaci = await Astro.request.formData();
+  const datoteka = podaci.get('datoteka');
+  sadrzaj = datoteka instanceof File && datoteka.size > 0 ? await datoteka.text() : String(podaci.get('sadrzaj') ?? '');
+  ishod = await uvezi(db, sadrzaj, podaci.get('radnja') === 'primijeni', korisnik, new Date());
+}
+
+const osobe = await db.select().from(osoba).orderBy(asc(osoba.prezime));
+const rasporedi = await db.select().from(raspored);
+const jedinice = new Map((await db.select().from(jedinica)).map((j) => [j.id, j.naziv]));
+const racuni = await db.select({ osobaId: racun.osobaId, eposta: racun.eposta, stanje: racun.stanje }).from(racun);
+const imena = new Map(osobe.map((o) => [o.id, `${o.ime} ${o.prezime}`]));
+const tekuci = (osobaId: string) => rasporedi.filter((r) => r.osobaId === osobaId).sort((a, b) => b.vrijediOd.localeCompare(a.vrijediOd))[0];
+---
+
+<Okvir naslov="Organizacija">
+  <section>
+    <h2>Uvoz iz tablične datoteke</h2>
+    <p>CSV sa stupcima: <code>{STUPCI.join(';')}</code>. Datumi u obliku GGGG-MM-DD; više uloga odvojite znakom |.</p>
+    {
+      ishod && (
+        <div class={`poruka ${ishod.greske.length ? 'greska' : ''}`} role="status">
+          {ishod.greske.length > 0 ? (
+            <>
+              <p>Uvoz nije proveden. Greške:</p>
+              <ul>{ishod.greske.map((g) => <li>{g}</li>)}</ul>
+            </>
+          ) : (
+            <p>
+              {ishod.primijenjeno ? 'Uvoz je proveden.' : 'Probni prolaz — ništa nije upisano.'} Redaka: {ishod.redci.length}; novih osoba:{' '}
+              {ishod.novihOsoba}; novih rasporeda: {ishod.novihRasporeda}; novih jedinica: {ishod.novihJedinica}; novih računa: {ishod.novihRacuna}.
+            </p>
+          )}
+        </div>
+      )
+    }
+    <form method="post" enctype="multipart/form-data">
+      <label for="datoteka">Datoteka</label>
+      <input id="datoteka" name="datoteka" type="file" accept=".csv,text/csv" />
+      <label for="sadrzaj">ili zalijepite sadržaj</label>
+      <textarea id="sadrzaj" name="sadrzaj" rows="6">{sadrzaj}</textarea>
+      <button type="submit" name="radnja" value="proba">Probni prolaz</button>
+      <button type="submit" name="radnja" value="primijeni">Uvezi</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Zaposlenici ({osobe.length})</h2>
+    <table>
+      <thead>
+        <tr><th>Ime i prezime</th><th>Jedinica</th><th>Radno mjesto</th><th>Nadređeni</th><th>Račun</th></tr>
+      </thead>
+      <tbody>
+        {osobe.map((o) => {
+          const r = tekuci(o.id);
+          const rn = racuni.find((x) => x.osobaId === o.id);
+          return (
+            <tr>
+              <td>{o.ime} {o.prezime}</td>
+              <td>{r ? jedinice.get(r.jedinicaId) : '–'}</td>
+              <td>{r?.radnoMjesto ?? '–'}</td>
+              <td>{r?.nadredeniOsobaId ? imena.get(r.nadredeniOsobaId) : '–'}</td>
+              <td>{rn ? `${rn.eposta} (${rn.stanje})` : 'nema'}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  </section>
+</Okvir>

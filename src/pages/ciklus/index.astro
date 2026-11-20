@@ -1,0 +1,66 @@
+---
+import Okvir from '../../layouts/Okvir.astro';
+import { pokusaj } from '../../lib/obrazac';
+import { otvoriCiklus, sviCiklusi } from '../../lib/postupak/ciklus';
+import { hrDatum } from '../../lib/postupak/pristup';
+import { GreskaPostupka } from '../../lib/postupak/stroj';
+import { sviPaketi } from '../../paketi';
+
+const korisnik = Astro.locals.korisnik!;
+const { db } = Astro.locals.okruzenje;
+if (!korisnik.uloge.some((u) => u === 'kadrovska' || u === 'odlucitelj')) return new Response('Nemate ovlast za ovu stranicu.', { status: 403 });
+
+const paket = sviPaketi()[0]!;
+let greska: string | null = null;
+if (Astro.request.method === 'POST') {
+  const f = await Astro.request.formData();
+  let id = '';
+  greska = await pokusaj(async () => {
+    const godina = Number(f.get('godina'));
+    if (!Number.isInteger(godina) || godina < 2025 || godina > 2100) throw new GreskaPostupka('Upišite godinu koja se ocjenjuje.');
+    id = await otvoriCiklus(db, paket.oznaka, paket.verzija, godina, korisnik, new Date());
+  });
+  if (!greska) return Astro.redirect(`/ciklus/${id}`);
+}
+const ciklusi = await sviCiklusi(db);
+---
+
+<Okvir naslov="Ciklusi ocjenjivanja">
+  {greska && <p class="poruka greska" role="alert">{greska}</p>}
+  {
+    ciklusi.length === 0 ? (
+      <p>Još nema otvorenih ciklusa.</p>
+    ) : (
+      <table>
+        <thead><tr><th>Godina</th><th>Paket pravila</th><th>Otvoren</th><th>Stanje</th><th></th></tr></thead>
+        <tbody>
+          {ciklusi.map((c) => (
+            <tr>
+              <td>{c.godina}.</td>
+              <td>{c.paket} {c.paketVerzija}</td>
+              <td>{hrDatum(c.otvoreno)}</td>
+              <td>{c.stanje}</td>
+              <td><a href={`/ciklus/${c.id}`}>Otvori</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
+  {
+    korisnik.uloge.includes('kadrovska') && (
+      <form method="post">
+        <fieldset>
+          <legend>Otvaranje ciklusa</legend>
+          <p>
+            Otvaranjem se zaključavaju postavke, stvaraju tijela i po jedan predmet za svakog zaposlenika s rasporedom u toj godini. Prije toga uvezite
+            organizaciju i provjerite postavke.
+          </p>
+          <label for="godina">Godina koja se ocjenjuje</label>
+          <input id="godina" name="godina" type="number" min="2025" value={new Date().getUTCFullYear()} required />
+          <button type="submit">Otvori ciklus</button>
+        </fieldset>
+      </form>
+    )
+  }
+</Okvir>
