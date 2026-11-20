@@ -1,0 +1,9 @@
+oib;ime;prezime;eposta;jedinica;radno_mjesto;nadredeni_oib;radi_od;radi_do;uloge
+00000050009;Ravnateljica;Primjer;UPISITE-SVOJU-ADRESU@primjer.hr;Uprava;ravnateljica;;2020-01-01;;odlucitelj|kadrovska
+00000050017;Voditelj;Primjer;voditelj@primjer.hr;Odjel;voditelj;00000050009;2020-01-01;;
+00000050025;Zaposlenik1;Primjer;zaposlenik1@primjer.hr;Odjel;referent;00000050017;2020-01-01;;
+00000050033;Zaposlenik2;Primjer;zaposlenik2@primjer.hr;Odjel;referent;00000050017;2020-01-01;;
+00000050041;Zaposlenik3;Primjer;zaposlenik3@primjer.hr;Odjel;referent;00000050017;2020-01-01;;
+00000050050;Zaposlenik4;Primjer;zaposlenik4@primjer.hr;Odjel;referent;00000050017;2020-01-01;;
+00000050068;Zaposlenik5;Primjer;zaposlenik5@primjer.hr;Odjel;referent;00000050017;2020-01-01;;
+00000050076;Novi;Primjer;novi@primjer.hr;Odjel;referent;00000050017;2026-09-01;;
